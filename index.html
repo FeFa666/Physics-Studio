@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#0a63a5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Physics Studio">
+<title>Physics Studio</title>
+<link rel="icon" type="image/png" href="logo.png">
+<link rel="apple-touch-icon" href="logo.png">
+<link rel="manifest" href="manifest.json">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Verdana,Arial,sans-serif;background:#fff;font-size:12px;color:#333}
+#topbar{background:#0a63a5;border-bottom:3px solid #064a7e;min-height:46px;display:flex;align-items:center;padding:0 14px;gap:14px}
+.logoimg{height:34px;cursor:pointer}
+#topbar nav a{color:#fff;font-size:12px;font-weight:bold;text-decoration:none;margin:0 7px;cursor:pointer}
+#topbar nav a:hover{text-decoration:underline}
+#autharea{margin-left:auto;display:flex;gap:8px;align-items:center;color:#fff;font-size:11px}
+#cloudstat{padding:3px 8px;border-radius:3px;font-weight:bold;font-size:10px}
+.btn{background:linear-gradient(#fdfdfd,#d9d9d9);border:1px solid #888;border-radius:3px;font-size:11px;padding:4px 10px;cursor:pointer;color:#222}
+.btn.green{background:linear-gradient(#7ed321,#4ea30c);border-color:#3a7a08;color:#fff;font-weight:bold}
+.btn.blue{background:linear-gradient(#6db3e8,#2a7ab8);border-color:#1d5c8c;color:#fff;font-weight:bold}
+.btn.red{background:linear-gradient(#e88,#a22);border-color:#811;color:#fff;font-weight:bold}
+.wrap{max-width:1240px;margin:0 auto;padding:10px}
+h2.sec{font-size:24px;color:#444;font-weight:normal;margin:14px 0 6px}
+.grid{display:flex;flex-wrap:wrap;gap:10px}
+.card{width:176px;border:1px solid #c8c8c8;background:#fff;cursor:pointer}
+.card:hover{box-shadow:0 0 4px #9cf}
+.card img{width:100%;height:100px;object-fit:cover;background:#dde3e8;display:block}
+.card .t{padding:5px 6px 2px;font-size:12px}.card .p{padding:0 6px 6px;font-size:10px;color:#888}
+#page-build{display:none;padding:20px}
+.bform{max-width:680px;margin:0 auto;background:#f4f4f4;border:2px solid #ccc;padding:20px;border-radius:6px}
+.bform label{display:block;margin:8px 0 4px;font-weight:bold;color:#555}
+.bform input{width:100%;padding:8px;border:1px solid #aaa;border-radius:3px}
+.err{color:#c00;min-height:16px;margin:8px 0}
+.warn{background:#fff3cd;border:1px solid #e0c060;padding:8px;font-size:11px;margin:8px 0;display:none}
+table.mg{width:100%;border-collapse:collapse;margin-top:8px;background:#fff}
+table.mg td{border:1px solid #ddd;padding:6px;font-size:11px}
+table.mg img{width:64px;height:36px;object-fit:cover;display:block}
+.modal{position:fixed;inset:0;background:#0009;display:none;z-index:60;overflow:auto}
+.modal .box{max-width:780px;margin:40px auto;background:#fff;border:4px solid #0a63a5;padding:14px}
+.banners{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.banners img{width:220px;height:110px;object-fit:cover;border:1px solid #999;background:#dde3e8}
+.overlay{position:fixed;inset:0;background:#4a86c8;display:none;z-index:70;overflow:auto}
+.overlay .inner{max-width:520px;margin:60px auto;background:#33609a;padding:20px;border:1px solid #234;color:#fff}
+.overlay input{width:100%;padding:6px;margin:4px 0 10px;border:1px solid #123;border-radius:2px}
+.overlay label{font-size:11px;font-weight:bold}
+.overlay .err{color:#fcc}
+@media (max-width:800px){
+  #topbar{flex-wrap:wrap;padding:6px 8px;gap:8px}
+  #topbar nav a{margin:0 4px;font-size:11px}
+  .logoimg{height:26px}
+  .wrap{padding:4px}
+  h2.sec{font-size:18px}
+  .grid{gap:6px}
+  .card{width:47%}
+  .card img{height:80px}
+  #page-build{padding:6px}
+  .bform{padding:10px}
+  .modal .box{margin:6px;padding:8px}
+  .banners img{width:46%;height:80px}
+  .overlay .inner{margin:12px;padding:12px}
+  table.mg td{padding:4px;font-size:10px}
+}
+</style>
+</head>
+<body>
+<div id="topbar">
+  <img src="Banner.png" class="logoimg" alt="Physics Studio" onclick="showGames()">
+  <nav><a onclick="showGames()">Home</a><a onclick="showGames()">Games</a><a onclick="openBuild()">Build</a></nav>
+  <span id="cloudstat">Cloud: …</span>
+  <div id="autharea"></div>
+</div>
+<div class="wrap" id="page-games"><h2 class="sec">All Games</h2><div id="gerr" class="err"></div><div class="grid" id="grid"></div></div>
+<div id="page-build">
+  <div class="bform">
+    <h3 style="margin-top:0">FINAL EXPORT — загрузи .exphys из приложения</h3>
+    <div class="warn" id="cloudwarn">Cloud OFF: игры НЕ сохраняются. Опубликуй правила Firestore (блоки games/profiles/dist).</div>
+    <label>Название игры:</label><input id="gname">
+    <label>Файл .exphys:</label><input type="file" id="gfile" accept=".exphys">
+    <div class="err" id="berr"></div>
+    <button class="btn green" style="width:100%;padding:10px;font-size:14px" onclick="finalExport()">FINAL EXPORT</button>
+    <button class="btn" style="width:100%;margin-top:8px" onclick="showGames()">Cancel</button>
+    <h3 style="margin:22px 0 4px">My Games (обновить / удалить)</h3>
+    <div id="mygames"></div>
+  </div>
+</div>
+<div class="modal" id="m-game"><div class="box" id="gbox"></div></div>
+<div class="modal" id="m-inst"><div class="box" style="max-width:460px;text-align:center">
+  <h3>Нужен клиент Physics Player</h3>
+  <p style="color:#666" id="insttext">Клиент не запустился за 5 секунд.</p>
+  <button class="btn green" id="instyes" onclick="downloadInstaller()">Да</button>
+  <button class="btn" onclick="document.getElementById('m-inst').style.display='none'">Нет</button>
+</div></div>
+<div class="overlay" id="m-auth"><div class="inner" id="abox"></div></div>
+<input type="file" id="updfile" accept=".exphys" style="display:none">
+<script>
+const IS_ANDROID=/Android/i.test(navigator.userAgent);
+const firebaseConfig={apiKey:"AIzaSyBjmp0M5eTPCSKHG98oegmlKYtQCYTA1Qw",authDomain:"physics-studio.firebaseapp.com",
+  projectId:"physics-studio",storageBucket:"physics-studio.firebasestorage.app",messagingSenderId:"659942641091",
+  appId:"1:659942641091:web:8a897cf0132acfaf278176"};
+let FAUTH=null,FDB=null,CLOUD_OK=false,CURRENT=null,GAMES=[],GAMES_ERR="";
+try{if(window.firebase){firebase.initializeApp(firebaseConfig);FAUTH=firebase.auth();FDB=firebase.firestore()}}catch(e){}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function pint(v){return parseInt(v||0,10)}
+async function cloudPing(){if(!FDB)return false;try{await FDB.collection("games").limit(1).get();return true}catch(e){return false}}
+async function cloudLoadGames(){
+  GAMES_ERR="";
+  if(!FDB){GAMES_ERR="Firebase SDK не загрузился";return[]}
+  try{
+    const snap=await FDB.collection("games").limit(500).get();
+    const out=[];snap.forEach(d=>{const p=d.data();p.cloudId=d.id;out.push(p)});
+    out.sort((a,b)=>pint(b.created)-pint(a.created));
+    return out;
+  }catch(e){GAMES_ERR=String(e.code||e);return[]}
+}
+async function cloudAddGame(pkg){
+  if(!CLOUD_OK||!CURRENT)return null;
+  try{const ref=await FDB.collection("games").add(Object.assign({},pkg,{ownerUid:CURRENT.uid}));return ref.id}
+  catch(e){return null}
+}
+async function cloudSetGame(id,pkg){
+  if(!CLOUD_OK||!CURRENT)return false;
+  try{await FDB.collection("games").doc(id).set(Object.assign({},pkg,{ownerUid:CURRENT.uid}));return true}
+  catch(e){return false}
+}
+async function cloudDelGame(id){
+  if(!CLOUD_OK||!CURRENT)return false;
+  try{await FDB.collection("games").doc(id).delete();return true}catch(e){return false}
+}
+async function cloudSetProfile(uid,username){
+  if(!CLOUD_OK||!CURRENT)return;
+  try{await FDB.collection("profiles").doc(uid).set({username},{merge:true})}catch(e){}
+}
+async function cloudGetProfile(uid){
+  if(!CLOUD_OK||!FDB)return null;
+  try{const d=await FDB.collection("profiles").doc(uid).get();return d.exists?d.data():null}catch(e){return null}
+}
+async function loadGames(){GAMES=await cloudLoadGames();renderGames();renderMyGames()}
+function isPrivateFor(g){return g.visibility==="private"&&(!CURRENT||
+  (CURRENT.uid!==g.ownerUid&&CURRENT.username!==g.author))}
+function renderAuth(){
+  const cs=document.getElementById("cloudstat");
+  cs.textContent=CLOUD_OK?"Cloud: ON":"Cloud: OFF";
+  cs.style.background=CLOUD_OK?"#2e7d32":"#b71c1c";cs.style.color="#fff";
+  document.getElementById("cloudwarn").style.display=CLOUD_OK?"none":"block";
+  document.getElementById("autharea").innerHTML=CURRENT
+    ?`<span>Hi, <b>${esc(CURRENT.username)}</b>!</span><button class="btn" onclick="logout()">Logout</button>`
+    :`<button class="btn blue" onclick="showAuth(false)">Login</button>
+      <button class="btn green" onclick="showAuth(true)">Sign Up</button>`;
+}
+function logout(){if(FAUTH)FAUTH.signOut().catch(()=>{});}
+function showAuth(signup){document.getElementById("m-auth").style.display="block";
+  document.getElementById("abox").innerHTML=`
+   <h3 style="margin:0 0 10px">${signup?"Sign up":"Login"} |
+     <a href="#" style="color:#cde" onclick="showAuth(${!signup});return false">${signup?"Login":"Sign up"}</a></h3>
+   <label>Username</label><input id="au">
+   <label>Password</label><input id="ap" type="password">
+   ${signup?`<label>Confirm Password</label><input id="ap2" type="password">`:``}
+   <div class="err" id="aerr"></div>
+   <button class="btn green" style="width:100%;padding:8px" onclick="doAuth(${signup})">${signup?"Sign Up":"Login"}</button>
+   <button class="btn" style="width:100%;margin-top:6px" onclick="document.getElementById('m-auth').style.display='none'">Cancel</button>`}
+async function doAuth(signup){const e=document.getElementById("aerr");e.textContent="";
+  const u=document.getElementById("au").value.trim(),p=document.getElementById("ap").value;
+  if(!/^[A-Za-z0-9_]{3,20}$/.test(u)){e.textContent="Bad username";return}
+  if(p.length<6){e.textContent="Password too short";return}
+  if(signup&&p!==document.getElementById("ap2").value){e.textContent="Passwords do not match";return}
+  if(!FAUTH){e.textContent="Firebase SDK не загрузился.";return}
+  const email=u.toLowerCase()+"@physics-studio.game";
+  try{
+    const cred=signup?await FAUTH.createUserWithEmailAndPassword(email,p)
+                     :await FAUTH.signInWithEmailAndPassword(email,p);
+    const uid=cred.user.uid;let name=u;
+    if(signup){await cloudSetProfile(uid,u);}
+    else{const pr=await cloudGetProfile(uid);if(pr&&pr.username)name=pr.username;else await cloudSetProfile(uid,name);}
+    CURRENT={uid,username:name};renderAuth();document.getElementById("m-auth").style.display="none";loadGames();
+  }catch(err){
+    const c=err.code||"";
+    const msg={
+      "auth/operation-not-allowed":"Включи Email/Password в Firebase Console.",
+      "auth/configuration-not-found":"Включи Email/Password в Firebase Console.",
+      "auth/network-request-failed":"Нет сети до Firebase.",
+      "auth/email-already-in-use":"Username занят.",
+      "auth/invalid-login-credentials":"Неверный логин/пароль.",
+      "auth/wrong-password":"Неверный логин/пароль.",
+      "auth/user-not-found":"Такого аккаунта нет."
+    }[c]||("Firebase: "+c);
+    e.textContent=msg;
+  }
+}
+if(FAUTH){FAUTH.onAuthStateChanged(async user=>{
+  if(user){const pr=await cloudGetProfile(user.uid);const name=(pr&&pr.username)||user.email.split("@")[0];
+    CURRENT={uid:user.uid,username:name};}else CURRENT=null;
+  renderAuth();loadGames();})}
+function showGames(){document.getElementById("page-games").style.display="block";
+  document.getElementById("page-build").style.display="none";renderGames()}
+function openBuild(){if(!CURRENT){alert("Нужен аккаунт!");showAuth(true);return}
+  document.getElementById("page-games").style.display="none";
+  document.getElementById("page-build").style.display="block";renderMyGames()}
+function renderGames(){
+  const el=document.getElementById("grid");
+  document.getElementById("gerr").textContent=GAMES_ERR?("Ошибка загрузки игр: "+GAMES_ERR):"";
+  const vis=GAMES.filter(g=>!isPrivateFor(g));
+  if(!vis.length){el.innerHTML=`<div style="border:1px dashed #bbb;padding:24px;color:#777;background:#fafafa">
+    Игр пока нет (или они приватные). Создай в приложении и загрузи .exphys во вкладке Build.</div>`;return}
+  el.innerHTML=vis.map((x)=>{const i=GAMES.indexOf(x);return `<div class="card" onclick="openGame(${i})">
+    <img src="${x.logo||""}"><div class="t">${esc(x.name)}</div>
+    <div class="p">plays: ${pint(x.plays)} • by ${esc(x.author||"?")}</div></div>`}).join("")}
+function renderMyGames(){const el=document.getElementById("mygames");
+  if(!CURRENT){el.innerHTML=`<i>Войди, чтобы управлять играми.</i>`;return}
+  const mine=GAMES.map((x,i)=>[x,i]).filter(([x])=>
+    x.ownerUid===CURRENT.uid||x.uploader===CURRENT.username||x.author===CURRENT.username);
+  if(!mine.length){el.innerHTML=`<i>У тебя ещё нет игр в облаке.</i>`;return}
+  el.innerHTML=`<table class="mg">`+mine.map(([x,i])=>`<tr>
+    <td><img src="${x.logo||""}"></td>
+    <td><b>${esc(x.name)}</b> ${x.visibility==="private"?"🔒":""}<br><span style="color:#888">${new Date(pint(x.created)||Date.now()).toLocaleDateString()}</span></td>
+    <td style="width:190px">
+      <button class="btn blue" onclick="beginUpdate(${i})">Update</button>
+      <button class="btn red" onclick="delGame(${i})">Delete</button>
+    </td></tr>`).join("")+`</table>`}
+async function delGame(i){if(!confirm("Удалить игру?"))return;
+  const ok=await cloudDelGame(GAMES[i].cloudId);
+  if(!ok){alert("Не удалось удалить.");return}await loadGames()}
+let UPD_IDX=-1;
+function beginUpdate(i){UPD_IDX=i;document.getElementById("updfile").click()}
+document.getElementById("updfile").addEventListener("change",ev=>{
+  const f=ev.target.files[0];if(!f||UPD_IDX<0)return;
+  const rd=new FileReader();
+  rd.onload=async()=>{try{const pkg=JSON.parse(rd.result);if(pkg.format!=="exphys-1")throw 0;
+      const old=GAMES[UPD_IDX];
+      pkg.name=old.name;pkg.created=old.created;pkg.author=old.author;pkg.ownerUid=old.ownerUid;
+      pkg.updated=Date.now();
+      const ok=await cloudSetGame(old.cloudId,pkg);
+      if(!ok){alert("Не удалось обновить.");return}
+      await loadGames();alert("Обновлено!");
+    }catch(x){alert("Неверный .exphys!")}};
+  rd.readAsText(f);ev.target.value=""});
+function bumpPlays(g){
+  if(FDB&&g.cloudId){const np=pint(g.plays)+1;
+    FDB.collection("games").doc(g.cloudId).update({plays:np}).catch(()=>{});
+    g.plays=np;}}
+function launchProto(url){
+  if(IS_ANDROID){location.href=url;return}
+  var ifr=document.createElement("iframe");
+  ifr.style.display="none"; ifr.src=url;
+  document.body.appendChild(ifr);
+  setTimeout(function(){ifr.remove()},4000);
+}
+let PROTO_TIMER=null;
+function playGame(i){const g=GAMES[i];
+  if(isPrivateFor(g)){alert("⛔ This place is private: доступ запрещён владельцем.");return}
+  bumpPlays(g);
+  if(g.cloudId){
+    let launched=false;
+    const onblur=()=>{launched=true;window.removeEventListener("blur",onblur)};
+    window.addEventListener("blur",onblur);
+    launchProto("physicsplayer://games/"+g.cloudId);
+    clearTimeout(PROTO_TIMER);
+    PROTO_TIMER=setTimeout(()=>{window.removeEventListener("blur",onblur);
+      if(!launched){
+        const t=document.getElementById("insttext");
+        const y=document.getElementById("instyes");
+        if(IS_ANDROID){
+          t.textContent="Установи приложение Physics Player (APK / Play Market), затем повтори Play.";
+          y.style.display="none";
+        }else{
+          t.textContent="Клиент не запустился за 5 секунд. Установщик скачает плеер из облака или поставит из файлов рядом и зарегистрирует протокол.";
+          y.style.display="";
+        }
+        document.getElementById("m-inst").style.display="block";
+      }},5000);
+  } else alert("У игры нет cloudId — обнови список.")}
+async function downloadInstaller(){
+  document.getElementById("m-inst").style.display="none";
+  try{
+    const r=await fetch("https://firestore.googleapis.com/v1/projects/physics-studio/databases/(default)/documents/dist/physics_player_installer");
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const d=await r.json();
+    const src=d.fields.source.stringValue;
+    const b=new Blob([src],{type:"text/plain"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="physics_player_installer.py";a.click();
+    alert("Запусти скачанный physics_player_installer.py (или упакуй его в exe и положи рядом physics_player.py/.exe для офлайн-установки).")
+  }catch(e){alert("Установщика нет в облаке (403/404).\nАвтору: опубликуй правила Firestore с блоком dist и нажми в Physics Studio: FILE → Upload Player+Installer to Cloud.")}
+}
+function openGame(i){const g=GAMES[i];if(!g)return;
+  if(isPrivateFor(g)){
+    document.getElementById("gbox").innerHTML=`
+      <div style="text-align:center;padding:30px">
+        <h2 style="color:#a00">⛔ This place is private</h2>
+        <p style="color:#666">Автор ограничил доступ к плейсу «${esc(g.name)}».<br>Ошибка загрузки: доступ запрещён владельцем.</p>
+        <button class="btn" onclick="document.getElementById('m-game').style.display='none'">Close</button>
+      </div>`;
+    document.getElementById("m-game").style.display="block";return}
+  document.getElementById("gbox").innerHTML=`
+   <div style="display:flex;gap:14px;align-items:flex-start">
+     <img src="${g.logo||""}" style="width:120px;height:120px;object-fit:cover;border:1px solid #999">
+     <div><h2 style="margin:0 0 6px">${esc(g.name)} ${g.visibility==="private"?"🔒":""}</h2>
+       <div style="color:#777">created ${new Date(pint(g.created)||Date.now()).toLocaleDateString()}
+       • plays: ${pint(g.plays)} ${g.allow_hand===false?"• Hand ЗАПРЕЩЁН":"• Hand разрешён"}</div>
+       <div style="margin-top:10px">
+         <button class="btn green" onclick="playGame(${i})">Play</button>
+         <b style="margin-left:8px">by ${esc(g.author||"?")}</b>
+         <button class="btn" style="margin-left:12px" onclick="document.getElementById('m-game').style.display='none'">Close</button>
+       </div></div></div>
+   <div class="banners">${(g.banners||[]).filter(Boolean).map(b=>`<img src="${b}">`).join("")}</div>
+   <div id="protohint" style="display:none;background:#fff3cd;border:1px solid #e0c060;padding:8px;font-size:11px;margin-top:8px">
+    Клиент не открылся? На ПК: Play ещё раз → предложение установить. На Android: установи Physics Player (APK/Play).</div>`;
+  document.getElementById("m-game").style.display="block"}
+function finalExport(){const e=document.getElementById("berr");e.textContent="";
+  if(!CURRENT){e.textContent="Нужен аккаунт!";showAuth(true);return}
+  if(!CLOUD_OK){e.textContent="Cloud OFF: сохранение невозможно.";return}
+  const name=document.getElementById("gname").value.trim();
+  const f=document.getElementById("gfile").files[0];
+  if(!f){e.textContent="Выбери .exphys файл!";return}
+  const rd=new FileReader();
+  rd.onload=async()=>{try{const pkg=JSON.parse(rd.result);
+      if(pkg.format!=="exphys-1")throw 0;
+      pkg.name=name||pkg.name;pkg.uploaded=Date.now();
+      pkg.uploader=CURRENT.username;pkg.author=pkg.author||CURRENT.username;pkg.ownerUid=CURRENT.uid;
+      const cid=await cloudAddGame(pkg);
+      if(!cid){e.textContent="Облако отклонило запись (правила?).";return}
+      pkg.cloudId=cid;
+      const blob=new Blob([JSON.stringify(pkg)],{type:"application/octet-stream"});
+      const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=cid+".exphys";a.click();
+      await loadGames();showGames();
+      alert("Готово! Спец-файл "+cid+".exphys скачан.\nПоложи его в %LOCALAPPDATA%\\PhysicsPlayer\\games\\ (ПК) — плеер подхватит сам.")
+    }catch(x){e.textContent="Неверный .exphys файл!"}};
+  rd.readAsText(f)}
+(async function(){CLOUD_OK=await cloudPing();renderAuth();if(!CURRENT)await loadGames()})();
+</script>
+</body>
+</html>
